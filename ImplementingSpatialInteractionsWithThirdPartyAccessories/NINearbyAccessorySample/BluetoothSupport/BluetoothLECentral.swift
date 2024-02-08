@@ -30,6 +30,8 @@ class DataCommunicationChannel: NSObject {
     var writeIterationsComplete = 0
     var connectionIterationsComplete = 0
     
+    var TagNumber = 0
+    
     // The number of times to retry scanning for accessories.
     // Change this value based on your app's testing use case.
     let defaultIterations = 5
@@ -67,6 +69,10 @@ class DataCommunicationChannel: NSObject {
             shouldStartWhenReady = true
         }
     }
+    
+    func disConnect(){
+        cleanup()
+    }
 
     // MARK: - Helper Methods.
 
@@ -79,17 +85,17 @@ class DataCommunicationChannel: NSObject {
         let connectedPeripherals: [CBPeripheral] = (centralManager.retrieveConnectedPeripherals(withServices: [TransferService.serviceUUID]))
 
         logger.info("Found connected Peripherals with transfer service: \(connectedPeripherals)")
-
+        /*
         if let connectedPeripheral = connectedPeripherals.last {
             logger.info("Connecting to peripheral \(connectedPeripheral)")
             self.discoveredPeripheral = connectedPeripheral
             centralManager.connect(connectedPeripheral, options: nil)
-        } else {
+        } else {*/
             logger.info("Not connected, starting to scan.")
             // Because the app isn't connected to the peer, start scanning for peripherals.
             centralManager.scanForPeripherals(withServices: [TransferService.serviceUUID],
                                               options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
-        }
+        //}
     }
 
     /*
@@ -199,25 +205,34 @@ extension DataCommunicationChannel: CBCentralManagerDelegate {
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
         logger.info("Discovered \( String(describing: peripheral.name)) at\(RSSI.intValue)")
         if(peripheral.name!.contains("LRTK")){
-            
         }
-        // Check if the app recognizes the in-range peripheral device.
-        else if discoveredPeripheral != peripheral {
-            
-            // Save a local copy of the peripheral so Core Bluetooth doesn't
-            // deallocate it.
-            discoveredPeripheral = peripheral
-            
-            // Connect to the peripheral.
-            logger.info("Connecting to perhiperal \(peripheral)")
-            
-            let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            discoveredPeripheralName = name ?? "Unknown"
-            print(discoveredPeripheralName!)
-            if discoveredPeripheralName!.contains("Tag"){
-                centralManager.connect(peripheral, options: nil)
+        else{
+            if discoveredPeripheral != peripheral {
+                
+                // Save a local copy of the peripheral so Core Bluetooth doesn't
+                // deallocate it.
+                discoveredPeripheral = peripheral
+                
+                // Connect to the peripheral.
+                logger.info("Connecting to perhiperal \(peripheral)")
+                
+                let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+                discoveredPeripheralName = name ?? "Unknown"
+                print(discoveredPeripheralName!)
+                print(TagNumber)
+                if (discoveredPeripheralName!.contains("TagA") && TagNumber==0){
+                    centralManager.connect(peripheral, options: nil)
+                }
+                else if(discoveredPeripheralName!.contains("TagB") && TagNumber==1){
+                    centralManager.connect(peripheral, options: nil)
+                }
+                else if(discoveredPeripheralName!.contains("TagC") && TagNumber==2){
+                    centralManager.connect(peripheral, options: nil)
+                }
             }
         }
+        // Check if the app recognizes the in-range peripheral device.
+    
     }
 
     // Reacts to connection failure.
@@ -261,7 +276,7 @@ extension DataCommunicationChannel: CBCentralManagerDelegate {
         }
         
         // Resume scanning after disconnection.
-        if connectionIterationsComplete < defaultIterations {
+        if TagNumber < 3 {
             retrievePeripheral()
         } else {
             logger.info("Connection iterations completed")
